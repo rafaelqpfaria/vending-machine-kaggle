@@ -1,0 +1,132 @@
+---
+title: "Vending Machine Analysis"
+author: "Rafael Queiroz"
+date: "2022-09-13"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+options(dplyr.summarise.inform = FALSE)
+library (tidyverse)
+library (funModeling)
+library (scales)
+
+vend_mach <- read.csv("vending_machine_sales.csv")
+```
+
+  To start our analysis I would like to consider two questions, "What is the best locations to put a next vending machine?" and "Which products performend better in these machines?". After loading the data lets have a fist look on its format.
+```{r}
+vend_mach %>% 
+  df_status()
+```
+  At a first look on the dataset and based on kaggle`s definition of each category we can drop some columns to have a better understanding of the problem.
+
+```{r}
+vend_mach_utl<-
+  vend_mach %>% 
+  select(-TransDate,-Transaction,-RCoil,
+         -MCoil, -Status, -Device.ID,
+         -MPrice, -MQty, -TransTotal) %>% 
+  mutate_at(c("Location","Machine","Type","Category"), as.factor)
+  
+```
+
+  First I would like to calculate how those machines performed under some assumptions such ass 
+```{r}
+totalSales<-
+  aggregate(LineTotal ~ Machine, vend_mach_utl,sum)
+
+total_sales_prod <-
+  aggregate(LineTotal ~ Machine + Product, vend_mach_utl, sum) 
+
+total_sales_date <- 
+  aggregate(LineTotal ~ Machine + Prcd.Date, vend_mach_utl, sum)
+```
+
+  First we have the object totalSales, it is an overall sum of all the sales from each vending machine.
+```{r}
+totalSales
+```
+  We can see that the unity in Gutten Plans and the one in EB Public Library performed much better than the other three. An explanation for that would be that the machines intalled in places with other options of food performed worse because costumers had more options.
+  We can see by the following graphic that the vending machines have a pretty linear behavior on regard of ther compound sellings.
+```{r}
+total_sales_date %>% 
+  group_by(Machine) %>% 
+  mutate(Prcd.Date = as.Date(Prcd.Date , "%m/%d/%y") ) %>% 
+  arrange(Prcd.Date) %>% 
+  mutate(partSale = cumsum(LineTotal)) %>%
+  ggplot(aes(Prcd.Date , partSale))+
+  geom_point(aes(colour=Machine))+
+  theme_dark()+
+  scale_x_date( breaks = "1 month", labels = date_format("%b\n%y"))+
+  labs(title = "Best Selling Machines",
+       subtitle = "in Dollars",
+       x = "Date",
+       y = "Total Sold")
+```
+  
+
+  Now lets move our attention to the other part of the problem, which products were sold the most.
+  
+```{r}
+ordered_sales<-
+  total_sales_prod %>% 
+  group_by(Machine,Product) %>% 
+  summarise(LineTotal) 
+
+
+ordered_sales<-
+  rename(ordered_sales, CumulativeSales = LineTotal) 
+
+ordered_sales <-
+  ordered_sales %>%   
+  arrange(desc(CumulativeSales))
+```
+
+
+```{r}
+ordered_sales %>% 
+  filter(Machine == "GuttenPlans x1367") %>% 
+  head(5)
+ordered_sales %>% 
+  filter(Machine == "EB Public Library x1380") %>% 
+  head(5)
+ordered_sales %>% 
+  filter(Machine == "BSQ Mall x1364 - Zales") %>% 
+  head(5)
+ordered_sales %>% 
+  filter(Machine == "Earle Asphalt x1371") %>% 
+  head(5)
+ordered_sales %>% 
+  filter(Machine == "BSQ Mall x1366 - ATT") %>% 
+  head(5)
+```
+In those charts we can see the top 5 selling products of each machine.
+Now lets take a look on the overall top selling products, it has been filtered of only products that sold over 200 dollars.
+
+```{r}
+abbrev <- c("1","2","3","4","5","6","7","8","9","10","11","12")
+
+total_product <- 
+  aggregate(LineTotal ~ Product, vend_mach_utl, sum) %>% 
+  arrange(desc(LineTotal)) %>% 
+  filter( LineTotal > 200) 
+
+total_product %>% 
+  mutate(Product = fct_reorder(Product, LineTotal )) %>%
+  ggplot(aes(x = Product , y = LineTotal , fill = Product))+
+  geom_bar( stat="identity")+
+  scale_x_discrete(breaks = abbrev, labels = waiver())+
+  theme_dark()+
+  labs(title = "Ranking Products Sold",
+       subtitle = "in Dollars",
+       x = "Product",
+       y = "Value")
+```
+  
+Now we can see the top sellers over all are Monster Energy Original, Coca-Cola Zero and Kitkat, specially because of the high volume sold at Gutten Plans and at the library.
+
+To conclude any new machine installed should be placed in a location where there aren`t many options around and probably should have in its products the most sold ones.
