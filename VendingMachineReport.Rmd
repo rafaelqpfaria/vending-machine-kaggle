@@ -6,6 +6,7 @@ output:
   pdf_document: default
   html_document: default
 ---
+This study is based on a dataset find on kaggle.com about sales on vending machines in different locations.
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)

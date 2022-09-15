@@ -70,6 +70,6 @@ test_sales_date <-
   group_by(Machine) %>% 
   mutate(Prcd.Date = as.Date(Prcd.Date , "%m/%d/%y") ) %>% 
   arrange(Prcd.Date) %>% 
-  mutate(cumulativeSale = cumsum(LineTotal))
+  mutate(cumulativeSale = cumsum(LineTotal))   
   
 
